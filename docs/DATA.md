@@ -1,0 +1,43 @@
+# 数据格式
+
+工作台只读 `--data` 指定目录。首次启动目录不存在时才复制示例文件；若目录已存在，需包含下列三个文件。
+
+## applications.csv
+
+UTF-8 CSV，每行一个岗位。字段：
+
+| 字段 | 内容 |
+|---|---|
+| id | 唯一编号，修改状态时保留 |
+| market | CN 或 US |
+| company / role | 公司名／岗位名 |
+| job_id | 岗位编号，多项以 `|` 分隔 |
+| status | submitted（已提交）、attention（待处理）、excluded（已排除） |
+| applied_at | 实际提交日期，没有就留空 |
+| location / url / note | 地点、岗位链接、记录说明 |
+
+不要把准备完成当成已提交。只有真实提交回执或人工确认后才更新为 submitted；工作台不代为判断。
+
+## pending.json
+
+数组，每个问题一个对象：
+
+```json
+[{"id":"p1","market":"CN","company":"示例公司","role":"分析师","question":"请确认可到岗日期","created":"2026-01-12T09:00:00Z","resolved":false}]
+```
+
+`created` / `updated` 使用带时区的 ISO 日期。已确认时将 `resolved` 更新为 true，并在 profile.json 记录已确认的事实。工作台下一秒更新显示；它不会自动观察聊天并猜测你是否确认。
+
+## profile.json
+
+```json
+{"facts":[{"id":"f1","text":"经本人确认的经历"}],"confirmed":{"CN":[],"US":[]}}
+```
+
+记录真实资料，不存密码、验证码或浏览器 Cookie。草稿命令会将这个文件作为模型输入，仅使用你明确提供的内容。
+
+## recent.json
+
+后台自动维护最近 25 条正常完成摘要。不要手动编辑。最新一次中断单独保存在 last_interruption.json，不占用这 25 条名额。记录没有额外按时间过期规则。
+
+建议维护程序使用临时文件再替换原文件，避免读取到写到一半的内容。格式出错时界面提示更新中断并稍后重试，不改写原数据。

@@ -1,0 +1,6 @@
+id,market,company,role,job_id,status,applied_at,location,url,note
+cn-001,CN,示例科技,数据分析师,CN-001,submitted,2026-01-10,北京,https://example.com/jobs/1,示例记录，不代表真实投递
+cn-002,CN,示例消费品,品牌培训生,CN-002,attention,,上海,https://example.com/jobs/2,等待确认可到岗日期
+cn-003,CN,示例制造,运营分析师,CN-003,excluded,,深圳,https://example.com/jobs/3,示例：不符合硬性资格
+us-001,US,Example Analytics,Business Analyst,US-001,submitted,2026-01-11,Remote,https://example.com/jobs/4,Synthetic record
+us-002,US,Example Retail,Marketing Analyst,US-002,excluded,,New York,https://example.com/jobs/5,Synthetic eligibility exclusion

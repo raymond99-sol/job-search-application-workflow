@@ -1,0 +1,11 @@
+[
+  {
+    "id": "p1",
+    "market": "CN",
+    "company": "示例消费品",
+    "role": "品牌培训生",
+    "question": "请确认真实的可到岗日期。",
+    "created": "2026-01-12T09:00:00Z",
+    "resolved": false
+  }
+]
