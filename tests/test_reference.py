@@ -22,10 +22,10 @@ def test_response_completion_observes_fragmented_compressed_bytes(encoding, enco
 
 def test_recent_archive_is_bounded_and_persists_after_reload(tmp_path, monkeypatch):
     monkeypatch.setattr(events, 'ROOT', tmp_path)
-    for i in range(40):
+    for i in range(140):
         events.save({'id': str(i), 'finished': True, 'status': 'completed', 'heartbeat': i, 'label': 'x'})
     rows = events.read()
-    assert len(rows) == 25 and rows[0]['id'] == '39' and rows[-1]['id'] == '15'
+    assert len(rows) == 100 and rows[0]['id'] == '139' and rows[-1]['id'] == '40'
     assert json.loads((tmp_path / 'recent.json').read_text()) == rows
     assert not list(tmp_path.glob('*.tmp'))
 

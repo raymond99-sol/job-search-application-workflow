@@ -3,6 +3,7 @@ import csv, json, time, asyncio
 from pathlib import Path
 from aiohttp import web, ClientSession, ClientTimeout
 from . import events
+from .activity_details import describe
 
 WEB = Path(__file__).parent / 'web'
 
@@ -55,16 +56,16 @@ class Dashboard:
             names = lambda d: [m.get('name', m.get('model', '')) for m in (d or {}).get('models', [])
                                if not m.get('remote_host') and ':cloud' not in m.get('name', '')
                                and not m.get('name', '').endswith('-cloud')]
-            active = (gateway or {}).get('active', [])
+            active = [{**row, 'display_label': describe(row)} for row in (gateway or {}).get('active', [])]
             selected = [m['model'] for m in active] or names(loaded)
             health = {'online': tags is not None, 'models': list(dict.fromkeys(selected)),
                       'loaded': names(loaded), 'selected': None, 'busy': bool(active)}
             gate = {'primary': gateway is not None, 'local_inflight': (gateway or {}).get('local_inflight', 0),
                     'monitoring_available': bool(gateway and gateway.get('monitoring_ready'))}
             rows = await asyncio.to_thread(events.read)
-            feed = [{'id': r['id'], 'label': str(r.get('label', '')).replace('正在处理：', '已处理：', 1),
+            feed = [{'id': r['id'], 'label': r.get('display_label') or describe({**r, 'finished': True}),
                      'status': r['status'], 'source': r.get('chat') or r.get('tool'),
-                     'time': r.get('heartbeat'), 'model': r.get('model')} for r in rows]
+                     'time': r.get('heartbeat'), 'model': r.get('model'), 'reason': r.get('reason'), 'aliases': r.get('aliases', [])} for r in rows]
             self.cache = (health, {'time': time.time(), 'model_monitor': {'active': active,
                 'backend_online': tags is not None, 'gateway': gate}, 'operation_feed': feed,
                 'calls': [], 'activities': [], 'general': {'work_tasks': []}})

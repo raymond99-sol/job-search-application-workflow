@@ -5,6 +5,7 @@ from aiohttp import web,ClientSession,ClientTimeout
 from urllib.parse import urlparse
 from . import events as links
 from .record_writer import RecordWriter
+from .activity_details import ACTIONS, exception_details, safe_detail
 HOP={'connection','keep-alive','proxy-authenticate','proxy-authorization','te','trailer','transfer-encoding','upgrade','host'}
 INFERENCE={'/api/chat','/api/generate','/api/embed','/api/embeddings','/v1/chat/completions','/v1/completions','/v1/embeddings','/api/codex/v1/responses','/v1/responses'}
 
@@ -21,7 +22,7 @@ def request_label(body):
  return '正在处理：'+(' '.join(text.split())[:140] or 'Work 交来的内容')
 
 class Completion:
- def __init__(self):self.buffer=b'';self.done=False;self.failed=False
+ def __init__(self):self.buffer=b'';self.done=False;self.failed=False;self.error_message=None
  def feed(self,chunk):
   self.buffer+=chunk
   while b'\n' in self.buffer:
@@ -33,7 +34,10 @@ class Completion:
   try:d=json.loads(line)
   except (ValueError,UnicodeError):return
   if not isinstance(d,dict):return
-  if d.get('error') or d.get('type') in ('error','response.failed','response.incomplete'):self.failed=True
+  if d.get('error') or d.get('type') in ('error','response.failed','response.incomplete'):
+   self.failed=True
+   detail=d.get('error') or (d.get('response',{}).get('error') if isinstance(d.get('response'),dict) else None)
+   if detail:self.error_message=safe_detail(detail)
   if d.get('done') is True or d.get('type')=='response.completed':self.done=True
   if d.get('choices') and any(x.get('finish_reason') for x in d['choices']):self.done=True
   if d.get('status')=='completed':self.done=True
@@ -116,6 +120,10 @@ def create_app(upstream='http://127.0.0.1:11434',primary=False,observe_requests=
    if isinstance(body,dict) and body.get('model') in await local_names():
     tid=next((request.headers.get(h) for h in ('x-codex-thread-id','session_id','x-session-id') if re.fullmatch(r'[0-9a-f-]{36}',request.headers.get(h,''))),None)
     span={'id':uuid.uuid4().hex,'kind':'model_gateway','thread_id':tid,'tool':'Work → Ollama' if tid or 'codex' in request.headers.get('User-Agent','').lower() else 'Ollama 客户端 → 本地模型' if 'ollama' in request.headers.get('User-Agent','').lower() else '本机程序 → Ollama','label':request_label(body),'role':'model','model':body['model'],'pid':os.getpid(),'started':time.time(),'heartbeat':time.time(),'status':'waiting','finished':False,'association':'explicit_request' if tid else 'caller_unavailable'}
+    call_id=request.headers.get('X-Local-Model-Call-Id','')
+    if re.fullmatch(r'[0-9a-f-]{32,36}',call_id):span['model_call_id']=call_id
+    role=request.headers.get('X-Local-Model-Role','')
+    if role in ACTIONS:span['role']=role
     span['chat']=request.headers.get('X-Chat-Name','')[:100]
     try:span['chat']=json.loads(chr(34)+span['chat']+chr(34))
     except ValueError:pass
@@ -125,23 +133,37 @@ def create_app(upstream='http://127.0.0.1:11434',primary=False,observe_requests=
      while True:await asyncio.sleep(2);span['heartbeat']=time.time();state['recorder'].submit(span)
     beat=asyncio.create_task(pulse())
   state['inflight']+=1
-  parser=None;response=None;monitor_error=None
+  parser=None;response=None;monitor_error=None;failure={};phase='connect_upstream'
   try:
    headers={k:v for k,v in request.headers.items() if k.lower() not in HOP and (not k.lower().startswith('x-observer-') or not observe_requests)}
    if transformed:headers={k:v for k,v in headers.items() if k.lower() not in ('content-encoding','content-length')}
    async with state['session'].request(request.method,upstream+request.rel_url.raw_path_qs,headers=headers,data=decoded,allow_redirects=False) as upstream_response:
+    if upstream_response.status>=400:failure['http_status']=upstream_response.status
     parser=ResponseCompletion(upstream_response.headers.get('Content-Encoding',''))
     response=web.StreamResponse(status=upstream_response.status,headers={k:v for k,v in upstream_response.headers.items() if k.lower() not in HOP})
     await response.prepare(request)
+    phase='read_upstream'
     async for chunk in upstream_response.content.iter_any():
+     phase='write_client'
      await response.write(chunk)
+     phase='read_upstream'
      if span:
       parser.feed(chunk);span.update(status='generating',progress_at=time.time())
     finished=200<=upstream_response.status<300 and parser.finish()
     monitor_error=parser.error
+    if parser.parser.error_message:failure['error_message']=parser.parser.error_message
+    if parser.parser.failed and not failure:failure['reason_code']='model_reported_failure'
+    if not finished and not failure and not monitor_error:failure['reason_code']='missing_completion'
+    phase='write_client'
     await response.write_eof();return response
-  except (ConnectionError,asyncio.CancelledError):raise
-  except Exception:
+  except (ConnectionError,asyncio.CancelledError) as error:
+   finished=False
+   failure.update(exception_details(error))
+   if phase=='write_client' and isinstance(error,ConnectionError):failure['reason_code']='client_disconnected'
+   raise
+  except Exception as error:
+   finished=False
+   failure.update(exception_details(error))
    if response and response.prepared:request.transport.close() if request.transport else None;return response
    return web.json_response({'error':'Ollama connection unavailable; request was not retried'},status=502)
   finally:
@@ -150,6 +172,7 @@ def create_app(upstream='http://127.0.0.1:11434',primary=False,observe_requests=
    if span:
     state['local_inflight']-=1
     state['snapshots'].pop(span['id'],None)
+    span.update(failure)
     if monitor_error:span['monitor_error']=monitor_error
     span.update(finished=True,status='completed' if finished else 'unknown' if monitor_error else 'interrupted',heartbeat=time.time());state['recorder'].submit(span)
    if beat:await asyncio.gather(beat,return_exceptions=True)
