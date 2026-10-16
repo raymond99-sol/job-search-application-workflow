@@ -7,7 +7,7 @@
 请帮我建立“你派活和审核、本地模型整理和起草、工作台显示记录”的求职流程。
 
 我的配置：
-- 项目目录：填写我电脑上的 career-desk 项目完整目录。
+- 项目目录：填写我电脑上的 job-search-application-workflow 项目完整目录。
 - 本地模型名称：填写 ollama list 显示的完整模型名称。
 - 本人资料：data/personal/inputs/background.txt。
 - 第一个岗位：data/personal/inputs/job-001.txt。

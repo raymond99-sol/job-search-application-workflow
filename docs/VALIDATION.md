@@ -20,7 +20,7 @@
 
 ## GitHub 自动测试
 
-初次公开版本已在 GitHub 托管的 macOS、Ubuntu 环境通过自动测试：[运行记录](https://github.com/raymond99-sol/career-desk/actions/runs/38893220705)。当前版本结果见仓库 Actions 页。
+初次公开版本已在 GitHub 托管的 macOS、Ubuntu 环境通过自动测试：[运行记录](https://github.com/raymond99-sol/job-search-application-workflow/actions/runs/38893220705)。当前版本结果见仓库 Actions 页。
 
 ## 未验证／不包含
 

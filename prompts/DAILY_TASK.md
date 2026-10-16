@@ -4,9 +4,9 @@
 
 ---
 
-请按 Career Desk 的本地求职流程处理这个岗位：
+请按 Job Search & Application Workflow 的分工处理这个岗位：
 
-- 项目：使用我们已确认的本机 career-desk 目录。
+- 项目：使用我们已确认的本机 job-search-application-workflow 目录。
 - 数据目录：data/personal。
 - 岗位文件：data/personal/inputs/job-002.txt。
 - 地区：CN（美国岗位改为 US）。

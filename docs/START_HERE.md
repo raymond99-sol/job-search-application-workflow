@@ -42,11 +42,11 @@ flowchart LR
 
 ## 2. 下载代码，安装并打开示例工作台
 
-在 [仓库首页](https://github.com/raymond99-sol/career-desk) 点击 **Code → Download ZIP**，解压，然后在终端进入解压后的目录。也可以安装 Git 后运行：
+在 [仓库首页](https://github.com/raymond99-sol/job-search-application-workflow) 点击 **Code → Download ZIP**，解压，然后在终端进入解压后的目录。也可以安装 Git 后运行：
 
 ```sh
-git clone https://github.com/raymond99-sol/career-desk.git
-cd career-desk
+git clone https://github.com/raymond99-sol/job-search-application-workflow.git
+cd job-search-application-workflow
 ```
 
 下面所有命令均在包含 README.md 的项目根目录运行：
