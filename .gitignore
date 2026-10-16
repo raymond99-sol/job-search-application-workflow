@@ -19,3 +19,4 @@ outputs/
 *.pem
 *.key
 .env.*
+data-*/
